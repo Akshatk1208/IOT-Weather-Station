@@ -1,0 +1,115 @@
+#include <DHT.h>
+#include <SFE_BMP180.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+#define PIN D3
+#define TYPE DHT11
+#define light A0
+#define rain D0
+
+DHT dht(PIN, TYPE);
+SFE_BMP180 bmp;
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+void setup() {
+    Serial.begin(9600);
+    dht.begin();
+    bmp.begin();
+    lcd.init();
+    lcd.backlight();
+    lcd.setCursor(2, 0);
+    lcd.print("System Test");
+    delay(3000);
+    lcd.clear();
+}
+
+void loop() {
+    DHT11Sensor();
+    BMP180Sensor();
+    LDRSensor();
+    YL83Sensor();
+    Serial.println();
+    delay(1000);
+}
+
+void DHT11Sensor() {
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    
+    if (isnan(h) || isnan(t)) {
+        Serial.println("Failed!");
+        return;
+    }
+    
+    Serial.print("Temperature: ");
+    Serial.println(t);
+    Serial.print("Humidity: ");
+    Serial.println(h);
+    
+    lcd.setCursor(0, 0);
+    lcd.print("T:");
+    lcd.print(t);
+    lcd.setCursor(8, 0);
+    lcd.print("H:");
+    lcd.print(h);
+}
+
+void BMP180Sensor() {
+    char status;
+    double P, T;
+    
+    status = bmp.startTemperature();
+    if (status != 0) {
+        delay(status);
+        status = bmp.getTemperature(T);
+        
+        if (status != 0) {
+            status = bmp.startPressure(3);
+            if (status != 0) {
+                delay(status);
+                status = bmp.getPressure(P, T);
+                
+                if (status != 0) {
+                    Serial.print("Pressure: ");
+                    Serial.println(P);
+                    lcd.setCursor(0, 1);
+                    lcd.print("P:");
+                    lcd.print(P);
+                } else {
+                    Serial.println("Failed!");
+                }
+            } else {
+                Serial.println("Failed!");
+            }
+        } else {
+            Serial.println("Failed!");
+        }
+    } else {
+        Serial.println("Failed!");
+    }
+}
+
+void LDRSensor() {
+    unsigned int L;
+    L = analogRead(light);
+    L = map(L, 0, 1023, 100, 0);
+    
+    Serial.print("Sunlight: ");
+    Serial.println(L);
+    
+    lcd.setCursor(8, 1);
+    lcd.print("L:");
+    lcd.print(L);
+}
+
+void YL83Sensor() {
+    int R;
+    R = digitalRead(rain);
+    
+    if (R) {
+        Serial.println("Precipitation Status: NOT RAINING");
+    } else {
+        Serial.println("Precipitation Status: RAINING");
+    }
+}
